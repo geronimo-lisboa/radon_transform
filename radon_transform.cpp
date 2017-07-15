@@ -36,14 +36,16 @@ int main(int argc, char** argv)
 	normalizeFilter->SetInput(imageReader->GetOutput());//Normalização + conversão pra float
 	normalizeFilter->Update();
 	FloatImageType::Pointer originalImage = normalizeFilter->GetOutput();//To com a imagem normalizada.
-	//A imagem está com lados = sqrt(2) * L, pra conseguir caber a maior projeção possivel da radon, na diagonal.
-	FloatImageType::Pointer sinogramImage = CreateEmptyITKImage(ceil(static_cast<double>(originalImage->GetLargestPossibleRegion().GetSize()[0])*sqrt(2)),
-		ceil(static_cast<double>(originalImage->GetLargestPossibleRegion().GetSize()[0])*sqrt(2)));
-	//Padding da imagem original
+	////A imagem está com lados = sqrt(2) * L, pra conseguir caber a maior projeção possivel da radon, na diagonal.
+	const int tamanhoDaLinha = ceil(static_cast<double>(originalImage->GetLargestPossibleRegion().GetSize()[0])*sqrt(2));
+	//const int tamanhoDaLinha = originalImage->GetLargestPossibleRegion().GetSize()[0];
+	const int angulos = 360;
+	FloatImageType::Pointer sinogramImage = CreateEmptyITKImage(angulos,tamanhoDaLinha);
+	////Padding da imagem original
 	PadFilterType::Pointer padFilter = PadFilterType::New();
 	padFilter->SetInput(originalImage);
 	PadFilterType::SizeType padValue;
-	const int L = ceil(sqrt(2)*(double)originalImage->GetLargestPossibleRegion().GetSize()[0]);
+	const int L = tamanhoDaLinha;
 	padValue[0] = (L - originalImage->GetLargestPossibleRegion().GetSize()[0]) / 2;
 	padValue[1] = (L - originalImage->GetLargestPossibleRegion().GetSize()[0]) / 2;
 	padFilter->SetPadLowerBound(padValue);
@@ -51,10 +53,16 @@ int main(int argc, char** argv)
 	padFilter->SetConstant(0);
 	padFilter->Update();
 
+	itk::ImageFileWriter<FloatImageType>::Pointer padWriter = itk::ImageFileWriter<FloatImageType>::New();
+	padWriter->SetInput(padFilter->GetOutput());
+	padWriter->SetFileName("c:\\src\\padWriter.mha");
+	padWriter->Write();
+
+
 	//O sinograma
 	for (int i = 0; i < 360; i++)
 	{
-		FloatImageType::Pointer rotatedImage = RotateImage(originalImage, i);
+		FloatImageType::Pointer rotatedImage = RotateImage(padFilter->GetOutput(), i);
 		RayAccumulatorImage::Pointer projection = Project(rotatedImage);
 		for (unsigned int y = 0; y<projection->GetLargestPossibleRegion().GetSize()[0]; y++)
 		{
