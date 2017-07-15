@@ -1,6 +1,7 @@
 //1)Carga da imagem
 //2)Geração do sinogramaa
 //3)Backpropagation
+#include <Windows.h>
 #include "spdlog.h"
 #include <itkLinearInterpolateImageFunction.h>
 #include <itkRigid2DTransform.h>
@@ -25,6 +26,9 @@ FloatImageType::Pointer RotateImage(FloatImageType::Pointer input, float angleIn
 RayAccumulatorImage::Pointer MakeRayAccumulator(FloatImageType::Pointer input);
 RayAccumulatorImage::Pointer Project(FloatImageType::Pointer input);
 
+//O método Project() é um dos glutões de processamento com 42 % e dentro dele é o InterpolateImageFunction.
+
+//A outra parte é dominada pelo ResampleImageFilter.
 
 int main(int argc, char** argv)
 {
@@ -36,6 +40,7 @@ int main(int argc, char** argv)
 	normalizeFilter->SetInput(imageReader->GetOutput());//Normalização + conversão pra float
 	normalizeFilter->Update();
 	FloatImageType::Pointer originalImage = normalizeFilter->GetOutput();//To com a imagem normalizada.
+	long T0 = GetCurrentTime();
 	////A imagem está com lados = sqrt(2) * L, pra conseguir caber a maior projeção possivel da radon, na diagonal.
 	const int tamanhoDaLinha = ceil(static_cast<double>(originalImage->GetLargestPossibleRegion().GetSize()[0])*sqrt(2));
 	//const int tamanhoDaLinha = originalImage->GetLargestPossibleRegion().GetSize()[0];
@@ -52,13 +57,6 @@ int main(int argc, char** argv)
 	padFilter->SetPadUpperBound(padValue);
 	padFilter->SetConstant(0);
 	padFilter->Update();
-
-	itk::ImageFileWriter<FloatImageType>::Pointer padWriter = itk::ImageFileWriter<FloatImageType>::New();
-	padWriter->SetInput(padFilter->GetOutput());
-	padWriter->SetFileName("c:\\src\\padWriter.mha");
-	padWriter->Write();
-
-
 	//O sinograma
 	for (int i = 0; i < 360; i++)
 	{
@@ -74,6 +72,8 @@ int main(int argc, char** argv)
 			sinogramImage->SetPixel(destPos, projection->GetPixel(srcPos));
 		}
 	}
+	long T1 = GetCurrentTime();
+	console->info("Tempo gasto = {0:d};ms",(T1-T0));
 	//Salva
 	itk::ImageFileWriter<FloatImageType>::Pointer writer = itk::ImageFileWriter<FloatImageType>::New();
 	writer->SetInput(sinogramImage);
