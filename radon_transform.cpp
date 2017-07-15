@@ -27,7 +27,6 @@ RayAccumulatorImage::Pointer MakeRayAccumulator(FloatImageType::Pointer input);
 RayAccumulatorImage::Pointer Project(FloatImageType::Pointer input);
 
 //O método Project() é um dos glutões de processamento com 42 % e dentro dele é o InterpolateImageFunction.
-
 //A outra parte é dominada pelo ResampleImageFilter.
 
 int main(int argc, char** argv)
@@ -101,31 +100,45 @@ RayAccumulatorImage::Pointer MakeRayAccumulator(FloatImageType::Pointer input)
 RayAccumulatorImage::Pointer Project(FloatImageType::Pointer input)
 {
 	RayAccumulatorImage::Pointer result = MakeRayAccumulator(input);
-	itk::LinearInterpolateImageFunction<FloatImageType, double>::Pointer interpolator = itk::LinearInterpolateImageFunction<FloatImageType, double>::New();
-	interpolator->SetInputImage(input);
-	typedef itk::LinearInterpolateImageFunction<FloatImageType, double>::PointType PointType;
-
-	//O raio vai de baixo pra cima, da esquerda pra direita.
-	for (unsigned int x = 0; x<input->GetLargestPossibleRegion().GetSize()[0]; x++)
+	float* resultBuffer = result->GetBufferPointer();
+	float* inputBuffer = input->GetBufferPointer();
+	int offset0 = input->GetOffsetTable()[0];
+	int offset2 = input->GetOffsetTable()[1];
+	//O raio acumula de baixo para cima, varre da esquerda pra direita
+	for(int col = 0; col<input->GetLargestPossibleRegion().GetSize()[0]; col++)
 	{
-		PointType rayOrigin;
-		rayOrigin[0] = input->GetOrigin()[0] + x * input->GetSpacing()[0];
-		rayOrigin[1] = input->GetOrigin()[1];
-		float sum = 0.0;
-		for (unsigned int y = 0; y<input->GetLargestPossibleRegion().GetSize()[1]; y++)
+		float acc = 0;
+		for(int ln = 0; ln<input->GetLargestPossibleRegion().GetSize()[0];ln++)
 		{
-			PointType currentPoint;
-			currentPoint[0] = rayOrigin[0];
-			currentPoint[1] = rayOrigin[1] + y * input->GetSpacing()[1];
-			float evaluation = interpolator->Evaluate(currentPoint);
-			sum = sum + evaluation;
+			acc += inputBuffer[col + ln*offset2/* * sizeof(float)*/];
 		}
-		RayAccumulatorImage::IndexType resultPos;
-		resultPos[0] = x;
-		result->SetPixel(resultPos, sum);
-		//cout << sum << endl;
+		resultBuffer[col] = acc;
 	}
 	return result;
+	//itk::LinearInterpolateImageFunction<FloatImageType, double>::Pointer interpolator = itk::LinearInterpolateImageFunction<FloatImageType, double>::New();
+	//interpolator->SetInputImage(input);
+	//typedef itk::LinearInterpolateImageFunction<FloatImageType, double>::PointType PointType;
+	////O raio vai de baixo pra cima, da esquerda pra direita.
+	//for (unsigned int x = 0; x<input->GetLargestPossibleRegion().GetSize()[0]; x++)
+	//{
+	//	PointType rayOrigin;
+	//	rayOrigin[0] = input->GetOrigin()[0] + x * input->GetSpacing()[0];
+	//	rayOrigin[1] = input->GetOrigin()[1];
+	//	float sum = 0.0;
+	//	for (unsigned int y = 0; y<input->GetLargestPossibleRegion().GetSize()[1]; y++)
+	//	{
+	//		PointType currentPoint;
+	//		currentPoint[0] = rayOrigin[0];
+	//		currentPoint[1] = rayOrigin[1] + y * input->GetSpacing()[1];
+	//		float evaluation = interpolator->Evaluate(currentPoint);
+	//		sum = sum + evaluation;
+	//	}
+	//	RayAccumulatorImage::IndexType resultPos;
+	//	resultPos[0] = x;
+	//	result->SetPixel(resultPos, sum);
+	//	//cout << sum << endl;
+	//	}
+	//	return result;
 }
 
 
