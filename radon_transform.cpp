@@ -2,6 +2,7 @@
 //2)Geração do sinogramaa
 //3)Backpropagation
 #include <Windows.h>
+#include <itkNearestNeighborInterpolateImageFunction.h>
 #include "spdlog.h"
 #include <itkLinearInterpolateImageFunction.h>
 #include <itkRigid2DTransform.h>
@@ -159,7 +160,7 @@ FloatImageType::Pointer RotateImage(FloatImageType::Pointer input, float angleIn
 	_t[1] = 0;
 	transform->SetTranslation(_t);
 	rotator->SetTransform(transform);
-	typedef itk::LinearInterpolateImageFunction<FloatImageType> LinearInterpolatorType;
+	typedef itk::NearestNeighborInterpolateImageFunction<FloatImageType> LinearInterpolatorType;
 	LinearInterpolatorType::Pointer li = LinearInterpolatorType::New();
 	rotator->SetInterpolator(li);
 	rotator->SetDefaultPixelValue(0);
